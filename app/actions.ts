@@ -24,20 +24,17 @@ import { exportMarkdown } from '@/lib/export';
 
 const str = (f: FormData, k: string) => String(f.get(k) ?? '').trim();
 
-export async function addConnection(f: FormData) {
+// New connection, or (with an id) edit one; an empty key keeps the stored key.
+export async function saveConnection(f: FormData) {
+  const id = Number(f.get('id')) || 0;
   const apiKey = str(f, 'apiKey');
+  const name = str(f, 'name');
   const kind = str(f, 'kind') === 'anthropic' ? 'anthropic' : 'openai';
-  if (!str(f, 'name') || !apiKey) return;
-  db.insert(connections)
-    .values({
-      name: str(f, 'name'),
-      kind,
-      baseUrl: str(f, 'baseUrl') || null,
-      apiKeyEnc: encrypt(apiKey),
-      keyHint: apiKey.slice(-4),
-    })
-    .run();
-  revalidatePath('/settings');
+  if (!name || (!id && !apiKey)) return;
+  const values = { name, kind, baseUrl: str(f, 'baseUrl') || null, ...(apiKey ? { apiKeyEnc: encrypt(apiKey), keyHint: apiKey.slice(-4) } : {}) } as const;
+  if (id) db.update(connections).set(values).where(eq(connections.id, id)).run();
+  else db.insert(connections).values({ apiKeyEnc: '', keyHint: '', ...values }).run();
+  revalidatePath('/', 'layout');
 }
 
 export async function deleteConnection(f: FormData) {

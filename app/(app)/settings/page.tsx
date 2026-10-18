@@ -2,7 +2,7 @@ import { db, getKv } from '@/lib/db';
 import { agents, connections } from '@/lib/schema';
 import { BRAND_FIELDS } from '@/lib/defaults';
 import { getBrand } from '@/lib/prompt';
-import { deleteConnection, logout, saveBrand, saveSettings } from '@/app/actions';
+import { logout, saveBrand, saveSettings } from '@/app/actions';
 import { PALETTES } from '@/lib/palettes';
 import { lastRun, ROUTINES } from '@/lib/cron';
 import { ConnectionForm } from './connection-form';
@@ -28,11 +28,11 @@ export default function SettingsPage() {
         <div className="card table-wrap" style={{ padding: 0 }}>
           <table>
             <thead>
-              <tr><th>名称</th><th>类型 / 地址</th><th>API Key</th><th>谁在用</th><th /></tr>
+              <tr><th>名称</th><th>类型 / 地址</th><th>API Key</th><th>谁在用</th></tr>
             </thead>
             <tbody>
               {conns.length === 0 && (
-                <tr><td colSpan={5} className="sub">还没有连接。在下面加一个，比如 Claude 或 DeepSeek。</td></tr>
+                <tr><td colSpan={4} className="sub">还没有连接。在下面加一个，比如 Claude 或 DeepSeek。</td></tr>
               )}
               {conns.map((c) => {
                 const users = allAgents.filter((a) => a.connectionId === c.id).map((a) => a.name);
@@ -45,19 +45,13 @@ export default function SettingsPage() {
                     </td>
                     <td className="mono">••••{c.keyHint}</td>
                     <td>{users.join('、') || <span className="hint">没有</span>}</td>
-                    <td>
-                      <form action={deleteConnection}>
-                        <input type="hidden" name="id" value={c.id} />
-                        <button className="btn-link" type="submit">删除</button>
-                      </form>
-                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        <ConnectionForm />
+        <ConnectionForm saved={conns.map(({ id, name, kind, baseUrl, keyHint }) => ({ id, name, kind, baseUrl, keyHint }))} />
       </section>
 
       <section className="field" aria-labelledby="brand-h">
