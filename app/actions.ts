@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { agents, brand, connections, ideas, topics } from '@/lib/schema';
+import { agentSkills, agents, brand, connections, ideas, topics } from '@/lib/schema';
 import { encrypt } from '@/lib/crypto';
 import { BRAND_FIELDS } from '@/lib/defaults';
 import { SESSION_COOKIE } from '@/lib/session';
@@ -21,6 +21,7 @@ import { getKv, setKv } from '@/lib/db';
 import { assignSlot, autoPlan, weekStart } from '@/lib/schedule';
 import { dailyTopics, weeklyPlan } from '@/lib/routines';
 import { exportMarkdown } from '@/lib/export';
+import { addFromCatalog, addSkill, fetchSkill } from '@/lib/skills';
 
 const str = (f: FormData, k: string) => String(f.get(k) ?? '').trim();
 
@@ -207,4 +208,38 @@ export async function setSlot(f: FormData) {
   const d = str(f, 'draftId');
   assignSlot(Number(f.get('id')), d ? Number(d) : null);
   revalidatePath('/', 'layout');
+}
+
+// ---- Agent skills ----
+
+export async function addSkillAction(_: ActionState, f: FormData): Promise<ActionState> {
+  return attempt(async () => {
+    const agentId = str(f, 'agentId');
+    const mode = str(f, 'mode');
+    if (mode === 'catalog') {
+      await addFromCatalog(agentId, str(f, 'catalogId'), f.get('full') === '1');
+      return '加好了';
+    }
+    if (mode === 'url') {
+      const url = str(f, 'url');
+      if (!/^https?:\/\//.test(url)) throw new Error('贴一个 http(s) 链接');
+      const s = await fetchSkill(url);
+      addSkill(agentId, { ...s, source: url });
+      return `导入了「${s.name}」`;
+    }
+    const name = str(f, 'name');
+    const content = String(f.get('content') ?? '').trim();
+    if (!name || !content) throw new Error('名称和内容都要写');
+    addSkill(agentId, { name, content });
+    return `加好了「${name}」`;
+  });
+}
+
+export async function skillAction(f: FormData) {
+  const id = Number(f.get('id'));
+  const op = str(f, 'op');
+  if (op === 'remove') db.delete(agentSkills).where(eq(agentSkills.id, id)).run();
+  if (op === 'toggle') db.update(agentSkills).set({ enabled: f.get('enabled') === '1' }).where(eq(agentSkills.id, id)).run();
+  if (op === 'save') db.update(agentSkills).set({ content: String(f.get('content') ?? '').trim() }).where(eq(agentSkills.id, id)).run();
+  revalidatePath('/agents', 'layout');
 }

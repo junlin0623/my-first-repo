@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
 import { DEFAULT_AGENTS } from './defaults';
+import { RECOMMENDED_PROMPTS } from './skills-catalog';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -93,6 +94,15 @@ sqlite.exec(`
     evergreen INTEGER NOT NULL,
     draft_id INTEGER
   );
+  CREATE TABLE IF NOT EXISTS agent_skills (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT '',
+    catalog_id TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1
+  );
   CREATE TABLE IF NOT EXISTS kv (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -122,7 +132,7 @@ export function sweepStaleJobs() {
 const insertAgent = sqlite.prepare(
   'INSERT OR IGNORE INTO agents (id, name, summary, prompt, sort) VALUES (?, ?, ?, ?, ?)',
 );
-DEFAULT_AGENTS.forEach((a, i) => insertAgent.run(a.id, a.name, a.summary, a.prompt, i));
+DEFAULT_AGENTS.forEach((a, i) => insertAgent.run(a.id, a.name, a.summary, RECOMMENDED_PROMPTS[a.id] ?? a.prompt, i));
 
 // Optional local brand seed (gitignored), so private content never lands in the repo.
 const brandSeed = path.join(DATA_DIR, 'brand.local.json');

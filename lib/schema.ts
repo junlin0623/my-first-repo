@@ -103,3 +103,14 @@ export const kv = sqliteTable('kv', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 });
+
+// Skills attached to an agent: extra instructions appended to its prompt.
+export const agentSkills = sqliteTable('agent_skills', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  agentId: text('agent_id').notNull(),
+  name: text('name').notNull(),
+  source: text('source').notNull().default(''), // link to where it came from
+  catalogId: text('catalog_id').notNull().default(''), // set when added from the recommended list
+  content: text('content').notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+});

@@ -200,3 +200,10 @@ a.list-item:hover b, a.task:hover span:last-child { text-decoration: underline; 
 /* image grid */
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
 .cards img { width: 100%; border-radius: calc(var(--radius) * 0.8); display: block; border: 1px solid var(--border); }
+
+/* agent skills */
+.skill { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.guide { border: 1px dashed var(--border); border-radius: var(--radius); padding: 8px 12px; }
+.guide summary { cursor: pointer; font-size: 13px; font-weight: 500; }
+.guide-body { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; font-size: 13px; }
+.guide-body ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 2px; }

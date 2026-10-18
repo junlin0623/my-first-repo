@@ -15,7 +15,7 @@ export function getAgent(id: string) {
   return {
     name: agent.name,
     model: languageModel(conn, agent.model),
-    instructions: agentInstructions(agent.name, agent.prompt),
+    instructions: agentInstructions(agent.name, agent.prompt, agent.id),
   };
 }
 
