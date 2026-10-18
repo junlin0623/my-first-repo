@@ -131,9 +131,11 @@ export default function SettingsPage() {
         <ImportLegacy />
       </section>
 
-      <form action={logout}>
-        <button className="btn-link" type="submit">退出登录</button>
-      </form>
+      {process.env.APP_PASSWORD && (
+        <form action={logout}>
+          <button className="btn-link" type="submit">退出登录</button>
+        </form>
+      )}
     </>
   );
 }

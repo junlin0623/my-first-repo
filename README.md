@@ -8,11 +8,11 @@ A web workbench for one-person media companies: pluggable AI agents (chief edito
 
 ```bash
 npm install
-cp .env.example .env.local   # then fill in the three values
-npm run dev                  # http://localhost:3000
+cp .env.example .env.local   # fill SESSION_SECRET and ENCRYPTION_KEY
+npm run dev                  # http://127.0.0.1:3000
 ```
 
-1. Log in with `APP_PASSWORD`.
+1. No login by default; set `APP_PASSWORD` to require one. The server listens on 127.0.0.1 only.
 2. **设置 → 模型连接**: add a connection (Claude, DeepSeek, or any OpenAI-compatible API).
 3. **设置 → 品牌**: account name, positioning, voice. These are prepended to every agent's prompt.
 4. **Agent**: give 主编, 选题官, 写手 and 核查员 a connection and model.
