@@ -13,10 +13,14 @@
     "@ai-sdk/openai-compatible": "^3.0.71",
     "ai": "^7.0.143",
     "better-sqlite3": "^13.0.3",
+    "diff": "^9.0.0",
     "drizzle-orm": "^0.45.4",
+    "mammoth": "^1.13.0",
     "next": "^16.4.2",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "unpdf": "^1.9.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",

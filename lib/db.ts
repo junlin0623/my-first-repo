@@ -35,7 +35,65 @@ sqlite.exec(`
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS ideas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    text TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT '',
+    verdict TEXT,
+    note TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'pool',
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS topics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    no INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    what TEXT NOT NULL DEFAULT '',
+    why TEXT NOT NULL DEFAULT '',
+    angle TEXT NOT NULL DEFAULT '',
+    platforms TEXT NOT NULL DEFAULT '',
+    sources TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'candidate',
+    draft_id INTEGER
+  );
+  CREATE TABLE IF NOT EXISTS drafts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL,
+    title TEXT NOT NULL,
+    angle TEXT NOT NULL DEFAULT '',
+    evergreen INTEGER NOT NULL DEFAULT 1,
+    status TEXT NOT NULL DEFAULT 'draft',
+    mp TEXT NOT NULL DEFAULT '',
+    xhs TEXT NOT NULL DEFAULT '',
+    sources TEXT NOT NULL DEFAULT '',
+    check_report TEXT NOT NULL DEFAULT '',
+    job TEXT,
+    job_error TEXT NOT NULL DEFAULT '',
+    pending_field TEXT,
+    pending_content TEXT NOT NULL DEFAULT '',
+    published_url TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    thread TEXT NOT NULL,
+    role TEXT NOT NULL,
+    who TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL,
+    steps TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL
+  );
 `);
+
+// A job can't survive a server restart; clear any left behind so drafts don't look stuck.
+// Once per process: Next may evaluate this module in several bundles.
+const g = globalThis as { __wbBooted?: boolean };
+if (!g.__wbBooted) {
+  g.__wbBooted = true;
+  sqlite.exec(`UPDATE drafts SET job = NULL, job_error = '服务重启，上次的任务中断了，请重试' WHERE job IS NOT NULL`);
+}
 
 // Seed built-in agents that don't exist yet (keeps user edits).
 const insertAgent = sqlite.prepare(

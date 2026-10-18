@@ -5,9 +5,9 @@ import { usePathname } from 'next/navigation';
 
 const LINKS = [
   { href: '/', label: '今天' },
-  { label: '灵感池', step: 2 },
-  { label: '选题单', step: 2 },
-  { label: '稿件', step: 2 },
+  { href: '/ideas', label: '灵感池' },
+  { href: '/topics', label: '选题单' },
+  { href: '/drafts', label: '稿件' },
   { label: '发布包', step: 3 },
   { label: '排期', step: 4 },
   null,
