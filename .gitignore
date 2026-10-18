@@ -1,0 +1,11 @@
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+
+# secrets and local data — never commit
+.env*.local
+.env
+data/*.db
+data/*.db-*
+data/*.local.json

@@ -1,0 +1,74 @@
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --border: #e3e5ea;
+  --line: #eef0f3;
+  --ink: #15171c;
+  --ink2: #4a4f5c;
+  --muted: #6b7080;
+  --accent: #4b4fd6;
+  --accent-soft: #eeeffd;
+  --accent-ink: #2f33a8;
+  --ok: #0b5a50;
+  --ok-soft: #e7f4f1;
+  --warn: #8f1d14;
+  --warn-soft: #fdecea;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.6 'Noto Sans SC', system-ui, sans-serif;
+}
+a { color: inherit; text-decoration: none; }
+a:hover { color: var(--accent-ink); }
+h1 { margin: 0; font-size: 28px; line-height: 1.3; }
+h2 { margin: 0; font-size: 18px; }
+p { margin: 0; }
+
+.shell { display: flex; flex-wrap: wrap; min-height: 100vh; }
+.nav { flex: 1 1 208px; max-width: 240px; background: var(--surface); border-right: 1px solid var(--border); padding: 24px 16px; display: flex; flex-direction: column; gap: 4px; }
+.nav .brand { padding: 0 12px 20px; font-weight: 700; font-size: 16px; }
+.nav a, .nav span { display: flex; align-items: center; justify-content: space-between; min-height: 40px; padding: 0 12px; border-radius: 8px; color: var(--ink2); }
+.nav a.active { background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; }
+.nav span { color: var(--muted); }
+.nav small { font-size: 11px; color: var(--muted); font-weight: 400; }
+.nav hr { border: 0; border-top: 1px solid var(--border); margin: 12px 4px; }
+.main { flex: 999 1 560px; min-width: 0; padding: 32px 40px 56px; display: flex; flex-direction: column; gap: 24px; max-width: 1100px; }
+.sub { color: var(--ink2); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-weight: 500; }
+.hint { font-size: 12px; color: var(--muted); }
+.mono { font-family: var(--mono); }
+
+input, select, textarea { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid #d5d8df; border-radius: 8px; padding: 8px 12px; min-height: 40px; }
+textarea { resize: vertical; line-height: 1.7; }
+button, .btn { font: inherit; cursor: pointer; min-height: 40px; padding: 0 16px; border-radius: 8px; border: 1px solid #d5d8df; background: var(--surface); color: var(--ink); display: inline-flex; align-items: center; justify-content: center; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+.btn-link { border: 0; background: transparent; color: var(--ink2); text-decoration: underline; padding: 0 8px; }
+button:disabled { opacity: 0.5; cursor: default; }
+
+.pill { font-size: 12px; border-radius: 999px; padding: 2px 10px; background: #f0f1f4; color: var(--ink2); }
+.pill-ok { background: var(--ok-soft); color: var(--ok); }
+.pill-warn { background: var(--warn-soft); color: var(--warn); }
+
+table { border-collapse: collapse; width: 100%; }
+th { text-align: left; font-weight: 500; font-size: 13px; color: var(--ink2); padding: 10px 12px; }
+td { border-top: 1px solid var(--line); padding: 12px; vertical-align: top; }
+.table-wrap { overflow-x: auto; }
+
+.chat { display: flex; flex-direction: column; gap: 12px; }
+.chat-log { height: 460px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 14px; background: #fcfcfd; }
+.msg { display: flex; flex-direction: column; gap: 4px; }
+.msg.me { align-items: flex-end; }
+.msg .who { font-size: 12px; color: var(--muted); }
+.msg .bubble { border-radius: 10px; padding: 10px 12px; background: var(--bg); white-space: pre-wrap; max-width: 90%; }
+.msg.me .bubble { background: var(--accent); color: #fff; }
+.error { color: var(--warn); background: var(--warn-soft); border-radius: 8px; padding: 8px 12px; }
