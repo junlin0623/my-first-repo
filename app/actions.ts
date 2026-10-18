@@ -15,6 +15,12 @@ import { extractFile, extractUrl, findUrls } from '@/lib/extract';
 import { chiefSay } from '@/lib/chief';
 import { importLegacy } from '@/lib/legacy';
 import * as D from '@/lib/drafts';
+import { startRender } from '@/lib/designer';
+import { draftImages } from '@/lib/legacy';
+import { getKv, setKv } from '@/lib/db';
+import { assignSlot, autoPlan, weekStart } from '@/lib/schedule';
+import { dailyTopics, weeklyPlan } from '@/lib/routines';
+import { exportMarkdown } from '@/lib/export';
 
 const str = (f: FormData, k: string) => String(f.get(k) ?? '').trim();
 
@@ -106,7 +112,7 @@ export async function setIdeaStatus(f: FormData) {
 }
 
 export async function makeTopics(_: ActionState): Promise<ActionState> {
-  return attempt(async () => `选题官出了 ${await generateTopics()} 条`);
+  return attempt(async () => `选题官出了 ${(await generateTopics()).length} 条`);
 }
 
 export async function pickTopicAction(f: FormData) {
@@ -151,7 +157,13 @@ export async function draftAction(f: FormData) {
   const id = Number(f.get('id'));
   const op = str(f, 'op');
   if (op === 'accept' || op === 'reject') D.resolvePending(id, op === 'accept');
-  if (op === 'final') D.setStatus(id, 'final');
+  if (op === 'final') {
+    D.setStatus(id, 'final');
+    const d = D.getDraft(id);
+    // 通过 hands the draft to 美编 unless it already has cards
+    if (d && !d.job && draftImages(d.code).length === 0) startRender(id);
+  }
+  if (op === 'render' && !D.getDraft(id)?.job) startRender(id, { respec: f.get('respec') === '1' });
   if (op === 'reopen') D.setStatus(id, 'draft');
   if (op === 'published') D.setStatus(id, 'published', str(f, 'url'));
   if (op === 'check' && !D.getDraft(id)?.job) D.startCheck(id);
@@ -164,4 +176,38 @@ export async function importLegacyAction(_: ActionState, f: FormData): Promise<A
     const r = importLegacy(str(f, 'path'));
     return `导入了 ${r.topics} 条选题、${r.drafts} 篇稿件、${r.images} 张图、${r.ideas} 条灵感`;
   });
+}
+
+// ---- Steps 3–4: publishing, schedule, routines ----
+
+export async function saveSettings(f: FormData) {
+  for (const k of ['palette', 'sources', 'exportPath']) setKv(k, str(f, k));
+  setKv('cron:off', f.get('cronOn') === 'on' ? '0' : '1');
+  revalidatePath('/', 'layout');
+}
+
+export async function runRoutine(_: ActionState, f: FormData): Promise<ActionState> {
+  return attempt(async () => {
+    if (str(f, 'key') === 'weekly-plan') await weeklyPlan();
+    else await dailyTopics({ manual: true });
+    return '跑完了，结果在首页主编的对话里';
+  });
+}
+
+export async function exportAction(_: ActionState): Promise<ActionState> {
+  return attempt(async () => {
+    const r = exportMarkdown(getKv('exportPath'));
+    return `导出了 ${r.drafts} 篇稿件、${r.lists} 份选题单、${r.ideas} 条灵感`;
+  });
+}
+
+export async function planWeek(f: FormData) {
+  autoPlan(weekStart(Number(f.get('offset') ?? 1)));
+  revalidatePath('/schedule');
+}
+
+export async function setSlot(f: FormData) {
+  const d = str(f, 'draftId');
+  assignSlot(Number(f.get('id')), d ? Number(d) : null);
+  revalidatePath('/', 'layout');
 }

@@ -1,13 +1,15 @@
 import Link from 'next/link';
 import { asc, desc, eq } from 'drizzle-orm';
-import { db } from '@/lib/db';
+import { db, sweepStaleJobs } from '@/lib/db';
 import { agents, drafts, topics } from '@/lib/schema';
 import { CHIEF } from '@/lib/chief';
 import { JOB_LABEL, thread } from '@/lib/view';
+import { PLATFORM, weekSlots, weekStart, WEEKDAY } from '@/lib/schedule';
 import { AutoRefresh, ChiefChat } from './client';
 import { TopicList } from './topic-list';
 
 export default function TodayPage() {
+  sweepStaleJobs();
   const all = db.select().from(drafts).orderBy(desc(drafts.updatedAt)).all();
   const latest = db.select({ date: topics.date }).from(topics).orderBy(desc(topics.date)).limit(1).get()?.date;
   const list = latest ? db.select().from(topics).where(eq(topics.date, latest)).orderBy(asc(topics.no)).all() : [];
@@ -15,6 +17,9 @@ export default function TodayPage() {
   const review = all.filter((d) => d.status === 'draft' && !d.job);
   const stock = all.filter((d) => d.status === 'final' && d.evergreen).length;
   const hotUsed = list.some((t) => t.kind !== 'green' && t.status === 'picked');
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Shanghai' });
+  const coming = [...weekSlots(weekStart(0)), ...weekSlots(weekStart(1))].filter((s) => s.date >= today).slice(0, 6);
+  const titleOf = new Map(all.map((d) => [d.id, `${d.code} ${d.title}`]));
   const needed = ['chief', 'scout', 'writer', 'checker'];
   const unset = db.select().from(agents).all().filter((a) => needed.includes(a.id) && !(a.connectionId && a.model));
 
@@ -72,6 +77,17 @@ export default function TodayPage() {
               <span><span className="mono hint">{d.code}</span> {d.title}</span>
               {d.jobError && <span className="hint" style={{ color: 'var(--warn)' }}>上次出错：{d.jobError}</span>}
             </Link>
+          ))}
+          <div className="row" style={{ justifyContent: 'space-between', marginTop: 12 }}>
+            <h2>接下来的排期</h2>
+            <Link href="/schedule" className="hint" style={{ textDecoration: 'underline' }}>全部</Link>
+          </div>
+          {coming.map((s) => (
+            <div key={s.id} className="list-item" style={{ flexDirection: 'row', gap: 8 }}>
+              <span className="mono hint" style={{ flex: '0 0 auto' }}>{WEEKDAY[new Date(`${s.date}T00:00:00Z`).getUTCDay()]}</span>
+              <span style={{ flex: '0 0 auto' }}>{PLATFORM[s.platform]}</span>
+              <span style={{ minWidth: 0 }}>{s.draftId ? titleOf.get(s.draftId) : <span style={{ color: 'var(--warn)' }}>{s.label} · 空</span>}</span>
+            </div>
           ))}
         </aside>
       </div>

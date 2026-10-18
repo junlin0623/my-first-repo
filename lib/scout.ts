@@ -45,15 +45,20 @@ const topicSchema = z.object({
   sources: z.string().describe('一手来源，每行一个链接；没有就写「待补」'),
 });
 
-// 选题官 turns the idea pool into today's topic list.
-export async function generateTopics() {
+// 选题官 turns the idea pool (plus fresh news, if any) into today's topic list.
+export async function generateTopics(news = '') {
   const pool = db.select().from(ideas).where(eq(ideas.status, 'pool')).orderBy(desc(ideas.id)).limit(30).all();
-  if (pool.length === 0) throw new Error('灵感池是空的，先投喂几条想法或导入资料');
+  if (pool.length === 0 && !news) throw new Error('灵感池是空的，也没有信息源的新消息。先投喂几条想法，或在设置里加信息源');
   const scout = getAgent('scout');
   const { output } = await generateText({
     model: scout.model,
     instructions: scout.instructions,
-    prompt: `从灵感池里挑出值得做的，整理成今天的选题单（5–8 条）。不要编造来源；来源不清楚就写「待补」。\n已经做过的稿件：\n${doneTitles() || '（还没有）'}\n\n灵感池：\n${pool.map((i) => `- ${i.text}（${i.source}；${i.note}）`).join('\n')}${jsonOnly(topicSchema, { array: true })}`,
+    prompt: [
+      '整理成今天的选题单（5–8 条），分热点 / 本周内 / 常青。不要编造来源；来源只用下面给出的链接，没有就写「待补」。',
+      `已经做过的稿件（避免重复）：\n${doneTitles() || '（还没有）'}`,
+      news && `信息源的新消息：\n${news}`,
+      pool.length > 0 && `灵感池：\n${pool.map((i) => `- ${i.text}（${i.source}；${i.note}）`).join('\n')}`,
+    ].filter(Boolean).join('\n\n') + jsonOnly(topicSchema, { array: true }),
     output: Output.array({ element: topicSchema, maxItems: 8 }),
   });
   const date = today();
@@ -61,5 +66,5 @@ export async function generateTopics() {
   output.forEach((t, i) => db.insert(topics).values({ ...t, date, no: start + i + 1 }).run());
   // Everything the scout looked at has been considered; it leaves the pool.
   pool.forEach((i) => db.update(ideas).set({ status: 'used' }).where(eq(ideas.id, i.id)).run());
-  return output.length;
+  return output;
 }

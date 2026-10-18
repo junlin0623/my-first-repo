@@ -85,14 +85,37 @@ sqlite.exec(`
     steps TEXT NOT NULL DEFAULT '[]',
     created_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS slots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    platform TEXT NOT NULL,
+    label TEXT NOT NULL,
+    evergreen INTEGER NOT NULL,
+    draft_id INTEGER
+  );
+  CREATE TABLE IF NOT EXISTS kv (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
 `);
 
-// A job can't survive a server restart; clear any left behind so drafts don't look stuck.
-// Once per process: Next may evaluate this module in several bundles.
-const g = globalThis as { __wbBooted?: boolean };
-if (!g.__wbBooted) {
-  g.__wbBooted = true;
-  sqlite.exec(`UPDATE drafts SET job = NULL, job_error = '服务重启，上次的任务中断了，请重试' WHERE job IS NOT NULL`);
+// Columns added after a table first shipped.
+for (const sql of [
+  `ALTER TABLE drafts ADD COLUMN spec TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE drafts ADD COLUMN mp_html TEXT NOT NULL DEFAULT ''`,
+]) {
+  try {
+    sqlite.exec(sql);
+  } catch {
+    // already there
+  }
+}
+
+// A background job that hasn't touched its draft for 15 minutes died (timeout or restart).
+// Swept on read rather than at boot: Next evaluates this module in several bundles.
+export function sweepStaleJobs() {
+  const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  sqlite.prepare(`UPDATE drafts SET job = NULL, job_error = '任务超时或服务重启中断了，请重试' WHERE job IS NOT NULL AND updated_at < ?`).run(cutoff);
 }
 
 // Seed built-in agents that don't exist yet (keeps user edits).
@@ -111,3 +134,11 @@ if (brandCount.n === 0 && fs.existsSync(brandSeed)) {
 }
 
 export const db = drizzle(sqlite, { schema });
+
+export function getKv(key: string, fallback = '') {
+  return (sqlite.prepare('SELECT value FROM kv WHERE key = ?').get(key) as { value: string } | undefined)?.value ?? fallback;
+}
+
+export function setKv(key: string, value: string) {
+  sqlite.prepare('INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, value);
+}

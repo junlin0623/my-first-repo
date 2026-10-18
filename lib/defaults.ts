@@ -53,6 +53,9 @@ export const BRAND_FIELDS = [
   { key: 'voice', label: '人设和语气', rows: 3 },
   { key: 'avoid', label: '不碰的内容', rows: 2 },
   { key: 'tags', label: '话题标签组', rows: 3 },
+  { key: 'catchphrase', label: '金句框标题（卡片和公众号里的高亮框，如「说人话」）', rows: 1 },
+  { key: 'follow', label: '结尾页关注按钮文字', rows: 1 },
+  { key: 'signoff', label: '公众号文末引导语', rows: 2 },
 ] as const;
 
 // Presets for the "add connection" form.

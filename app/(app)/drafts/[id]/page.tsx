@@ -101,7 +101,14 @@ export default async function DraftPage({ params, searchParams }: { params: Prom
                 <div className="cards">
                   {images.map((n) => <img key={n} src={`/api/media/${encodeURIComponent(d.code)}/${encodeURIComponent(n)}`} alt={n} />)}
                 </div>
-              ) : <p className="sub">还没有卡片。美编出图在第 3 步接上。</p>
+              ) : <p className="sub">还没有卡片。</p>
+            )}
+            {tab === 'cards' && !d.job && (
+              <div className="row">
+                <Op id={id} op="render" label={images.length ? '按现有清单重新出图' : '让美编出图'} primary />
+                {d.spec && <Op id={id} op="render" label="让美编重写出图清单再出图" extra={<input type="hidden" name="respec" value="1" />} />}
+                <Link href={`/publish/${id}`} className="btn">去发布包</Link>
+              </div>
             )}
           </div>
         </section>
