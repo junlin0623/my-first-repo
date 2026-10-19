@@ -4,6 +4,7 @@ import { BRAND_FIELDS } from '@/lib/defaults';
 import { getBrand } from '@/lib/prompt';
 import { deleteConnection, logout, saveBrand } from '@/app/actions';
 import { ConnectionForm } from './connection-form';
+import { ImportLegacy } from '../client';
 
 export default function SettingsPage() {
   const conns = db.select().from(connections).all();
@@ -74,6 +75,11 @@ export default function SettingsPage() {
             <button className="btn-primary" type="submit">保存品牌设置</button>
           </div>
         </form>
+      </section>
+
+      <section className="field" aria-label="导入">
+        <h2>导入旧项目</h2>
+        <ImportLegacy />
       </section>
 
       <form action={logout}>

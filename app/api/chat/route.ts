@@ -1,24 +1,22 @@
 import { streamText, type ModelMessage } from 'ai';
-import { eq } from 'drizzle-orm';
-import { db } from '@/lib/db';
-import { agents } from '@/lib/schema';
-import { getConnection, languageModel } from '@/lib/models';
-import { agentInstructions } from '@/lib/prompt';
+import { errorText, getAgent } from '@/lib/agent';
 
 export async function POST(req: Request) {
   const { agentId, messages } = (await req.json()) as {
     agentId: string;
     messages: { role: 'user' | 'assistant'; content: string }[];
   };
-  const agent = db.select().from(agents).where(eq(agents.id, agentId)).get();
-  if (!agent?.enabled) return new Response('这个 agent 不存在或已停用', { status: 404 });
-  const conn = getConnection(agent.connectionId);
-  if (!conn || !agent.model) return new Response('先给这个 agent 选好连接和模型', { status: 400 });
+  let agent;
+  try {
+    agent = getAgent(agentId);
+  } catch (e) {
+    return new Response(errorText(e), { status: 400 });
+  }
 
   let streamError = '';
   const result = streamText({
-    model: languageModel(conn, agent.model),
-    instructions: agentInstructions(agent.name, agent.prompt),
+    model: agent.model,
+    instructions: agent.instructions,
     messages: messages.map((m): ModelMessage => ({ role: m.role, content: m.content })),
     onError: ({ error }) => {
       streamError = error instanceof Error ? error.message : String(error);
