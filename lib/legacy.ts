@@ -57,7 +57,15 @@ export function importLegacy(root: string) {
     const dir = path.join(draftsDir, folder);
     if (!fs.statSync(dir).isDirectory()) continue;
     const meta = titles.get(folder) ?? { title: folder, code: `No.${String(report.drafts + 1).padStart(3, '0')}` };
-    if (db.select().from(drafts).where(eq(drafts.code, meta.code)).get()) continue;
+    const spec = read(path.join(dir, 'spec.json'));
+    // keep the hand-made layout's article body; it is what gets pasted into 公众号
+    const mpHtml = read(path.join(dir, '公众号.html')).match(/<section id="article"[\s\S]*<\/section>/)?.[0] ?? '';
+    const existing = db.select().from(drafts).where(eq(drafts.code, meta.code)).get();
+    if (existing) {
+      // re-running fills in what an older import left out, never overwrites edits
+      if (!existing.spec && !existing.mpHtml) db.update(drafts).set({ spec, mpHtml }).where(eq(drafts.id, existing.id)).run();
+      continue;
+    }
     db.insert(drafts)
       .values({
         code: meta.code,
@@ -65,6 +73,8 @@ export function importLegacy(root: string) {
         mp: read(path.join(dir, '公众号.md')),
         xhs: read(path.join(dir, '小红书.md')),
         sources: read(path.join(dir, '来源.md')),
+        spec,
+        mpHtml,
         updatedAt: now(),
       })
       .run();

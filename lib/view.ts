@@ -15,5 +15,5 @@ export function thread(name: string) {
     .map((m) => ({ id: m.id, role: m.role, who: m.who, content: m.content, steps: JSON.parse(m.steps), time: time(m.createdAt) }));
 }
 
-export const JOB_LABEL = { writing: '写手在写', checking: '核查员在查', revising: '写手在改' } as const;
+export const JOB_LABEL = { writing: '写手在写', checking: '核查员在查', revising: '写手在改', rendering: '美编在出图' } as const;
 export const STATUS_LABEL = { draft: '草稿 · 待审', final: '已定稿', published: '已发布' } as const;

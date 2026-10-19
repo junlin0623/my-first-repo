@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
-import { agents, brand, connections, ideas, topics } from '@/lib/schema';
+import { agentSkills, agents, brand, connections, ideas, topics } from '@/lib/schema';
 import { encrypt } from '@/lib/crypto';
 import { BRAND_FIELDS } from '@/lib/defaults';
 import { SESSION_COOKIE } from '@/lib/session';
@@ -15,23 +15,27 @@ import { extractFile, extractUrl, findUrls } from '@/lib/extract';
 import { chiefSay } from '@/lib/chief';
 import { importLegacy } from '@/lib/legacy';
 import * as D from '@/lib/drafts';
+import { startRender } from '@/lib/designer';
+import { draftImages } from '@/lib/legacy';
+import { getKv, setKv } from '@/lib/db';
+import { assignSlot, autoPlan, weekStart } from '@/lib/schedule';
+import { dailyTopics, weeklyPlan } from '@/lib/routines';
+import { exportMarkdown } from '@/lib/export';
+import { addFromCatalog, addSkill, fetchSkill } from '@/lib/skills';
 
 const str = (f: FormData, k: string) => String(f.get(k) ?? '').trim();
 
-export async function addConnection(f: FormData) {
+// New connection, or (with an id) edit one; an empty key keeps the stored key.
+export async function saveConnection(f: FormData) {
+  const id = Number(f.get('id')) || 0;
   const apiKey = str(f, 'apiKey');
+  const name = str(f, 'name');
   const kind = str(f, 'kind') === 'anthropic' ? 'anthropic' : 'openai';
-  if (!str(f, 'name') || !apiKey) return;
-  db.insert(connections)
-    .values({
-      name: str(f, 'name'),
-      kind,
-      baseUrl: str(f, 'baseUrl') || null,
-      apiKeyEnc: encrypt(apiKey),
-      keyHint: apiKey.slice(-4),
-    })
-    .run();
-  revalidatePath('/settings');
+  if (!name || (!id && !apiKey)) return;
+  const values = { name, kind, baseUrl: str(f, 'baseUrl') || null, ...(apiKey ? { apiKeyEnc: encrypt(apiKey), keyHint: apiKey.slice(-4) } : {}) } as const;
+  if (id) db.update(connections).set(values).where(eq(connections.id, id)).run();
+  else db.insert(connections).values({ apiKeyEnc: '', keyHint: '', ...values }).run();
+  revalidatePath('/', 'layout');
 }
 
 export async function deleteConnection(f: FormData) {
@@ -106,7 +110,7 @@ export async function setIdeaStatus(f: FormData) {
 }
 
 export async function makeTopics(_: ActionState): Promise<ActionState> {
-  return attempt(async () => `选题官出了 ${await generateTopics()} 条`);
+  return attempt(async () => `选题官出了 ${(await generateTopics()).length} 条`);
 }
 
 export async function pickTopicAction(f: FormData) {
@@ -151,7 +155,13 @@ export async function draftAction(f: FormData) {
   const id = Number(f.get('id'));
   const op = str(f, 'op');
   if (op === 'accept' || op === 'reject') D.resolvePending(id, op === 'accept');
-  if (op === 'final') D.setStatus(id, 'final');
+  if (op === 'final') {
+    D.setStatus(id, 'final');
+    const d = D.getDraft(id);
+    // 通过 hands the draft to 美编 unless it already has cards
+    if (d && !d.job && draftImages(d.code).length === 0) startRender(id);
+  }
+  if (op === 'render' && !D.getDraft(id)?.job) startRender(id, { respec: f.get('respec') === '1' });
   if (op === 'reopen') D.setStatus(id, 'draft');
   if (op === 'published') D.setStatus(id, 'published', str(f, 'url'));
   if (op === 'check' && !D.getDraft(id)?.job) D.startCheck(id);
@@ -164,4 +174,72 @@ export async function importLegacyAction(_: ActionState, f: FormData): Promise<A
     const r = importLegacy(str(f, 'path'));
     return `导入了 ${r.topics} 条选题、${r.drafts} 篇稿件、${r.images} 张图、${r.ideas} 条灵感`;
   });
+}
+
+// ---- Steps 3–4: publishing, schedule, routines ----
+
+export async function saveSettings(f: FormData) {
+  for (const k of ['palette', 'sources', 'exportPath']) setKv(k, str(f, k));
+  setKv('cron:off', f.get('cronOn') === 'on' ? '0' : '1');
+  revalidatePath('/', 'layout');
+}
+
+export async function runRoutine(_: ActionState, f: FormData): Promise<ActionState> {
+  return attempt(async () => {
+    if (str(f, 'key') === 'weekly-plan') await weeklyPlan();
+    else await dailyTopics({ manual: true });
+    return '跑完了，结果在首页主编的对话里';
+  });
+}
+
+export async function exportAction(_: ActionState): Promise<ActionState> {
+  return attempt(async () => {
+    const r = exportMarkdown(getKv('exportPath'));
+    return `导出了 ${r.drafts} 篇稿件、${r.lists} 份选题单、${r.ideas} 条灵感`;
+  });
+}
+
+export async function planWeek(f: FormData) {
+  autoPlan(weekStart(Number(f.get('offset') ?? 1)));
+  revalidatePath('/schedule');
+}
+
+export async function setSlot(f: FormData) {
+  const d = str(f, 'draftId');
+  assignSlot(Number(f.get('id')), d ? Number(d) : null);
+  revalidatePath('/', 'layout');
+}
+
+// ---- Agent skills ----
+
+export async function addSkillAction(_: ActionState, f: FormData): Promise<ActionState> {
+  return attempt(async () => {
+    const agentId = str(f, 'agentId');
+    const mode = str(f, 'mode');
+    if (mode === 'catalog') {
+      await addFromCatalog(agentId, str(f, 'catalogId'), f.get('full') === '1');
+      return '加好了';
+    }
+    if (mode === 'url') {
+      const url = str(f, 'url');
+      if (!/^https?:\/\//.test(url)) throw new Error('贴一个 http(s) 链接');
+      const s = await fetchSkill(url);
+      addSkill(agentId, { ...s, source: url });
+      return `导入了「${s.name}」`;
+    }
+    const name = str(f, 'name');
+    const content = String(f.get('content') ?? '').trim();
+    if (!name || !content) throw new Error('名称和内容都要写');
+    addSkill(agentId, { name, content });
+    return `加好了「${name}」`;
+  });
+}
+
+export async function skillAction(f: FormData) {
+  const id = Number(f.get('id'));
+  const op = str(f, 'op');
+  if (op === 'remove') db.delete(agentSkills).where(eq(agentSkills.id, id)).run();
+  if (op === 'toggle') db.update(agentSkills).set({ enabled: f.get('enabled') === '1' }).where(eq(agentSkills.id, id)).run();
+  if (op === 'save') db.update(agentSkills).set({ content: String(f.get('content') ?? '').trim() }).where(eq(agentSkills.id, id)).run();
+  revalidatePath('/agents', 'layout');
 }

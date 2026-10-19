@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { desc } from 'drizzle-orm';
-import { db } from '@/lib/db';
+import { db, sweepStaleJobs } from '@/lib/db';
 import { drafts } from '@/lib/schema';
 import { JOB_LABEL, STATUS_LABEL } from '@/lib/view';
 
 export default function DraftsPage() {
+  sweepStaleJobs();
   const all = db.select().from(drafts).orderBy(desc(drafts.id)).all();
   return (
     <>

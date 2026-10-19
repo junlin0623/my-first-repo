@@ -61,10 +61,12 @@ export const drafts = sqliteTable('drafts', {
   xhs: text('xhs').notNull().default(''), // 小红书 markdown
   sources: text('sources').notNull().default(''),
   checkReport: text('check_report').notNull().default(''),
-  job: text('job', { enum: ['writing', 'checking', 'revising'] }), // background work in progress
+  job: text('job', { enum: ['writing', 'checking', 'revising', 'rendering'] }), // background work in progress
   jobError: text('job_error').notNull().default(''),
   pendingField: text('pending_field', { enum: ['mp', 'xhs', 'sources'] }), // AI revision awaiting accept
   pendingContent: text('pending_content').notNull().default(''),
+  spec: text('spec').notNull().default(''), // JSON card spec for the renderer (美编)
+  mpHtml: text('mp_html').notNull().default(''), // hand-made 公众号 layout; empty = generate from mp
   publishedUrl: text('published_url').notNull().default(''),
   updatedAt: text('updated_at').notNull(),
 });
@@ -84,4 +86,31 @@ export const messages = sqliteTable('messages', {
 export const brand = sqliteTable('brand', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
+});
+
+// Weekly publishing slots (排期). One row per platform per day.
+export const slots = sqliteTable('slots', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull(), // YYYY-MM-DD
+  platform: text('platform', { enum: ['mp', 'xhs'] }).notNull(),
+  label: text('label').notNull(), // e.g. 常青科普卡片
+  evergreen: integer('evergreen', { mode: 'boolean' }).notNull(), // can be filled from stock
+  draftId: integer('draft_id'),
+});
+
+// Small app settings: palette, news sources, export path, scheduler bookkeeping.
+export const kv = sqliteTable('kv', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+});
+
+// Skills attached to an agent: extra instructions appended to its prompt.
+export const agentSkills = sqliteTable('agent_skills', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  agentId: text('agent_id').notNull(),
+  name: text('name').notNull(),
+  source: text('source').notNull().default(''), // link to where it came from
+  catalogId: text('catalog_id').notNull().default(''), // set when added from the recommended list
+  content: text('content').notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
 });

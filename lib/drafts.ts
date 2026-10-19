@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import { generateText, streamText } from 'ai';
-import { db } from './db';
+import { db, sweepStaleJobs } from './db';
 import { drafts, messages, topics } from './schema';
 import { errorText, getAgent, now } from './agent';
 
@@ -26,10 +26,11 @@ export function splitSections(text: string): Partial<Record<Field, string>> {
 }
 
 export function getDraft(id: number) {
+  sweepStaleJobs();
   return db.select().from(drafts).where(eq(drafts.id, id)).get();
 }
 
-function update(id: number, set: Partial<Draft>) {
+export function update(id: number, set: Partial<Draft>) {
   db.update(drafts).set({ ...set, updatedAt: now() }).where(eq(drafts.id, id)).run();
 }
 
@@ -64,7 +65,7 @@ export function pickTopic(topicId: number, angle?: string) {
 }
 
 // Run work in the background; the page polls the draft's `job` field.
-function background(id: number, job: Draft['job'], work: () => Promise<void>) {
+export function background(id: number, job: Draft['job'], work: () => Promise<void>) {
   update(id, { job, jobError: '' });
   work()
     .then(() => update(id, { job: null }))

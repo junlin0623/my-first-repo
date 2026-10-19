@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { chief, feed, importLegacyAction, makeTopics, reviseDraft, type ActionState } from '@/app/actions';
+import { chief, exportAction, feed, importLegacyAction, makeTopics, reviseDraft, runRoutine, type ActionState } from '@/app/actions';
 
 function Result({ s }: { s: ActionState }) {
   if (s.error) return <p className="error">{s.error}</p>;
@@ -148,6 +148,27 @@ export function ImportLegacy() {
         <span className="hint">读取文件夹里的 content/选题单、content/drafts、content/灵感池.md。重复导入会跳过已有的。</span>
       </div>
       <button className="btn-primary" type="submit" disabled={busy} style={{ alignSelf: 'flex-start' }}>{busy ? '导入中…' : '导入'}</button>
+      <Result s={state} />
+    </form>
+  );
+}
+
+export function RunRoutine({ id, label }: { id: string; label: string }) {
+  const [state, action, busy] = useActionState(runRoutine, {});
+  return (
+    <form action={action} className="field">
+      <input type="hidden" name="key" value={id} />
+      <button type="submit" disabled={busy} style={{ alignSelf: 'flex-start' }}>{busy ? '在跑…' : label}</button>
+      <Result s={state} />
+    </form>
+  );
+}
+
+export function ExportButton() {
+  const [state, action, busy] = useActionState(exportAction, {});
+  return (
+    <form action={action} className="field">
+      <button type="submit" disabled={busy} style={{ alignSelf: 'flex-start' }}>{busy ? '导出中…' : '现在导出'}</button>
       <Result s={state} />
     </form>
   );

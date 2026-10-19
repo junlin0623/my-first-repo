@@ -17,6 +17,7 @@ async function login(formData: FormData) {
 }
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  if (!process.env.APP_PASSWORD) redirect('/');
   const { error } = await searchParams;
   return (
     <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 16 }}>
