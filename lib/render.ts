@@ -98,9 +98,22 @@ function templates(S: Palette, b: BrandText) {
 
 export const TEMPLATE_NAMES = ['xhsCover', 'xhsPage', 'xhsEnd', 'mpCover', 'mpSquare'] as const;
 
-const FONTS = 'https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&family=Space+Grotesk:wght@700&family=JetBrains+Mono:wght@400;600&display=block';
+// Fonts: files in ./fonts (the beta package ships them, since Google Fonts may not load in
+// mainland China) are served to the page through a fake host; otherwise use Google Fonts.
+const FONT_DIR = path.join(process.cwd(), 'fonts');
+const LOCAL_FONTS: [family: string, file: string, weight: string][] = [
+  ['Noto Sans SC', 'NotoSansSC.ttf', '100 900'],
+  ['Space Grotesk', 'SpaceGrotesk.ttf', '300 700'],
+  ['JetBrains Mono', 'JetBrainsMono.ttf', '100 800'],
+];
+const FONT_HOST = 'https://fonts.workbench.local/';
+const useLocalFonts = () => fs.existsSync(path.join(FONT_DIR, LOCAL_FONTS[0][1]));
+const fontCss = () =>
+  useLocalFonts()
+    ? `<style>${LOCAL_FONTS.map(([f, file, w]) => `@font-face{font-family:'${f}';src:url('${FONT_HOST}${file}');font-weight:${w};font-display:block}`).join('')}</style>`
+    : `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&family=Space+Grotesk:wght@700&family=JetBrains+Mono:wght@400;600&display=block">`;
 const wrap = (w: number, h: number, inner: string) =>
-  `<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="${FONTS}"><style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:${w}px;height:${h}px;overflow:hidden;background:#000}body{font-family:${CN};-webkit-font-smoothing:antialiased}</style></head><body><div style="position:relative;width:${w}px;height:${h}px;overflow:hidden">${inner}</div></body></html>`;
+  `<!doctype html><html><head><meta charset="utf-8">${fontCss()}<style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:${w}px;height:${h}px;overflow:hidden;background:#000}body{font-family:${CN};-webkit-font-smoothing:antialiased}</style></head><body><div style="position:relative;width:${w}px;height:${h}px;overflow:hidden">${inner}</div></body></html>`;
 
 export async function renderSpec(spec: SpecItem[], outDir: string, pal: Palette, b: BrandText) {
   const { chromium } = await import('playwright-core');
@@ -114,7 +127,10 @@ export async function renderSpec(spec: SpecItem[], outDir: string, pal: Palette,
       if (!make) continue;
       const [w, h, inner] = make(item.data || {}) as [number, number, string];
       const page = await browser.newPage({ viewport: { width: w, height: h } });
-      await page.setContent(wrap(w, h, inner), { waitUntil: 'networkidle' });
+      await page.route(`${FONT_HOST}**`, (route) =>
+        route.fulfill({ path: path.join(FONT_DIR, path.basename(new URL(route.request().url()).pathname)), contentType: 'font/ttf' }),
+      );
+      await page.setContent(wrap(w, h, inner), { waitUntil: 'networkidle', timeout: 60_000 });
       await page.evaluate(() => document.fonts.ready);
       await page.screenshot({ path: path.join(outDir, path.basename(item.file)) });
       await page.close();

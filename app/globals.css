@@ -32,8 +32,9 @@
   --info: oklch(0.488 0.243 264.376);
   --info-soft: oklch(0.96 0.03 264);
 
-  --sans: 'Geist', 'Noto Sans SC', 'PingFang SC', system-ui, sans-serif;
-  --mono: 'Geist Mono', ui-monospace, 'SF Mono', monospace;
+  /* system fonts only: web fonts from Google may not load in mainland China */
+  --sans: -apple-system, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   color-scheme: light;
 }
 

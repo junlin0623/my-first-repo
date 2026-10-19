@@ -4,7 +4,8 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
 import { DEFAULT_AGENTS } from './defaults';
-import { RECOMMENDED_PROMPTS } from './skills-catalog';
+import { RECOMMENDED_PROMPTS, SKILL_CATALOG } from './skills-catalog';
+import { encrypt } from './crypto';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -141,6 +142,29 @@ if (brandCount.n === 0 && fs.existsSync(brandSeed)) {
   const values = JSON.parse(fs.readFileSync(brandSeed, 'utf8')) as Record<string, string>;
   const insertBrand = sqlite.prepare('INSERT INTO brand (key, value) VALUES (?, ?)');
   for (const [k, v] of Object.entries(values)) insertBrand.run(k, v);
+}
+
+// First run of a fresh install: give every agent its recommended skills (once; removals stick).
+const skillsSeeded = sqlite.prepare("SELECT 1 FROM kv WHERE key = 'seeded:skills'").get();
+if (!skillsSeeded) {
+  const count = sqlite.prepare('SELECT COUNT(*) AS n FROM agent_skills').get() as { n: number };
+  if (count.n === 0) {
+    const insertSkill = sqlite.prepare('INSERT INTO agent_skills (agent_id, name, source, catalog_id, content) VALUES (?, ?, ?, ?, ?)');
+    for (const c of SKILL_CATALOG) insertSkill.run(c.agent, c.name, c.source.url, c.id, c.content);
+  }
+  sqlite.prepare("INSERT INTO kv (key, value) VALUES ('seeded:skills', '1')").run();
+}
+
+// Beta package: data/beta.seed.json carries one shared model connection. It is stored
+// encrypted, given to every agent that has none, and the plain-text file is deleted.
+const betaSeed = path.join(DATA_DIR, 'beta.seed.json');
+if (fs.existsSync(betaSeed)) {
+  const seed = JSON.parse(fs.readFileSync(betaSeed, 'utf8')) as { name: string; kind: string; baseUrl: string; apiKey: string; model: string };
+  const res = sqlite
+    .prepare('INSERT INTO connections (name, kind, base_url, api_key_enc, key_hint) VALUES (?, ?, ?, ?, ?)')
+    .run(seed.name, seed.kind, seed.baseUrl || null, encrypt(seed.apiKey), seed.apiKey.slice(-4));
+  sqlite.prepare('UPDATE agents SET connection_id = ?, model = ? WHERE connection_id IS NULL').run(res.lastInsertRowid, seed.model);
+  fs.rmSync(betaSeed);
 }
 
 export const db = drizzle(sqlite, { schema });

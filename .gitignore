@@ -8,3 +8,4 @@ next-env.d.ts
 .env
 data/
 .DS_Store
+dist/
