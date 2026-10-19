@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { asc, desc, eq } from 'drizzle-orm';
 import { db, sweepStaleJobs } from '@/lib/db';
 import { agents, drafts, topics } from '@/lib/schema';
+import { getBrand } from '@/lib/prompt';
 import { CHIEF } from '@/lib/chief';
 import { JOB_LABEL, thread } from '@/lib/view';
 import { PLATFORM, weekSlots, weekStart, WEEKDAY } from '@/lib/schedule';
@@ -34,6 +35,11 @@ export default function TodayPage() {
         </div>
       </header>
 
+      {!getBrand().positioning && (
+        <p className="error">
+          第一步：去<Link href="/settings" style={{ textDecoration: 'underline' }}>设置 → 品牌</Link>填账号名、一句话定位和语气。所有 agent 都按这个写，不填的话写出来会很泛。
+        </p>
+      )}
       {unset.length > 0 && (
         <p className="error">
           还没选模型：{unset.map((a) => <Link key={a.id} href={`/agents/${a.id}`} style={{ textDecoration: 'underline', marginRight: 8 }}>{a.name}</Link>)}

@@ -6,7 +6,8 @@
     "dev": "next dev -H 127.0.0.1",
     "build": "next build",
     "start": "next start -H 127.0.0.1",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "pack:beta": "node scripts/pack-beta.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.82",
